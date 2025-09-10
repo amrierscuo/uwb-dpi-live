@@ -14,6 +14,7 @@
   <canvas id="map" width="800" height="800"></canvas>
 
   <script>
+  // --- Configurazione mappa ---
   const WORLD={w:100,h:100,
     zones:[{x:15,y:15,w:30,h:22,level:"crit"},
            {x:60,y:50,w:20,h:25,level:"warn"}]};
@@ -24,6 +25,7 @@
 
   let agents=new Map();
 
+  // --- Disegno ---
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // zone
@@ -31,7 +33,7 @@
       ctx.fillStyle=z.level==="crit"?"rgba(239,68,68,.2)":"rgba(245,158,11,.2)";
       ctx.fillRect(z.x*scale,z.y*scale,z.w*scale,z.h*scale);
     }
-    // agents
+    // agenti
     for(const a of agents.values()){
       ctx.fillStyle=COLORS[a.status||"ok"];
       ctx.beginPath();ctx.arc(a.x*scale,a.y*scale,6,0,Math.PI*2);ctx.fill();
@@ -42,27 +44,44 @@
   function loop(){ draw(); requestAnimationFrame(loop); }
   loop();
 
-  // Connetti al server WS (sostituire con il tuo URL cloudflared)
-  const WS_URL = "wss://micro-asking-genome-upgrades.trycloudflare.com";
+  // --- WebSocket con autoreconnect ---
+  const WS_URL = "wss://micro-asking-genome-upgrades.trycloudflare.com"; // sostituire col proprio URL
+  let ws;
+  let reconnectDelay = 2000; // 2 secondi
 
+  function connectWS(){
+    ws = new WebSocket(WS_URL);
 
-  const ws=new WebSocket(WS_URL);
+    ws.onopen = ()=>{
+      statusEl.textContent = "Connesso a " + WS_URL;
+      statusEl.style.background="#064e3b";
+    };
 
-  ws.onopen=()=>{statusEl.textContent="Connesso a "+WS_URL;statusEl.style.background="#064e3b";}
-  ws.onclose=()=>{statusEl.textContent="Disconnesso";statusEl.style.background="#7f1d1d";}
-  ws.onerror=()=>{statusEl.textContent="Errore connessione";statusEl.style.background="#7f1d1d";}
+    ws.onclose = ()=>{
+      statusEl.textContent = "Disconnesso, riconnessione...";
+      statusEl.style.background="#7f1d1d";
+      setTimeout(connectWS, reconnectDelay);
+    };
 
-  ws.onmessage=(ev)=>{
-    try{
-      const msg=JSON.parse(ev.data);
-      // formato atteso: {type:'frame', tags:[{id:'T1',x:..,y:..,status:'ok'}]}
-      if(msg.tags){
-        for(const t of msg.tags){
-          agents.set(t.id,t);
+    ws.onerror = ()=>{
+      statusEl.textContent = "Errore connessione";
+      statusEl.style.background="#7f1d1d";
+      ws.close();
+    };
+
+    ws.onmessage = (ev)=>{
+      try{
+        const msg = JSON.parse(ev.data);
+        if(msg.tags){
+          for(const t of msg.tags){
+            agents.set(t.id,t);
+          }
         }
-      }
-    }catch(e){console.error(e);}
-  };
+      }catch(e){console.error(e);}
+    };
+  }
+
+  connectWS();
   </script>
 </body>
 </html>
