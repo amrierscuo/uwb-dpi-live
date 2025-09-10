@@ -6,15 +6,19 @@
   <style>
     body{margin:0;background:#0f172a;color:#e5e7eb;font-family:sans-serif}
     canvas{display:block;margin:20px auto;border:2px solid #1f2937;border-radius:8px}
+    .links{text-align:center;margin:20px 0}
+    .links a{display:block;color:#93c5fd;margin:8px 0;font-size:1.1rem;text-decoration:none}
+    .links a:hover{color:#60a5fa}
   </style>
 </head>
 <body>
   <h1 style="text-align:center">UWB Live Map (100×100 m)</h1>
   <canvas id="map" width="800" height="800"></canvas>
-<h1 style="text-align:center">UWB Live Map (100×100 m)</h1>
-<p style="text-align:center">
-  <a href="live.html" style="color:#93c5fd">Vai alla modalità Live (WebSocket)</a>
-</p>
+
+  <div class="links">
+    <a href="live.html"> Vai alla modalità Live (WebSocket in tempo reale)</a>
+    <a href="iot.html"> Vai alla modalità IoT (dati simulati da fonte esterna)</a>
+  </div>
 
   <script>
   const WORLD={w:100,h:100,
@@ -42,12 +46,10 @@
 
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // zone
     for(const z of WORLD.zones){
       ctx.fillStyle=z.level==="crit"?"rgba(239,68,68,.2)":"rgba(245,158,11,.2)";
       ctx.fillRect(z.x*scale,z.y*scale,z.w*scale,z.h*scale);
     }
-    // agents
     for(const a of agents){
       ctx.fillStyle=COLORS[a.status];
       ctx.beginPath();ctx.arc(a.x*scale,a.y*scale,6,0,Math.PI*2);ctx.fill();

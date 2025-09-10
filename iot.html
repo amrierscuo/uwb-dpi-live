@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>UWB Live Map - IoT Mode</title>
+  <style>
+    body{margin:0;background:#0f172a;color:#e5e7eb;font-family:sans-serif}
+    #status{padding:8px;background:#111827;text-align:center}
+    canvas{display:block;margin:20px auto;border:2px solid #1f2937;border-radius:8px}
+    .controls{text-align:center;margin:15px;color:#e5e7eb}
+    input[type=range]{width:300px}
+  </style>
+</head>
+<body>
+  <div id="status">Simulazione IoT attiva (fonte remota)</div>
+  <canvas id="map" width="800" height="800"></canvas>
+
+  <div class="controls">
+    <label for="speed">Aggiornamento (ms): </label>
+    <input type="range" id="speed" min="50" max="1000" step="50" value="200">
+    <span id="speedVal">200</span> ms
+  </div>
+
+  <script>
+  const WORLD={w:100,h:100,
+    zones:[{x:15,y:15,w:30,h:22,level:"crit"},
+           {x:60,y:50,w:20,h:25,level:"warn"}]};
+  const COLORS={ok:"#22c55e",warn:"#f59e0b",crit:"#ef4444"};
+  const canvas=document.getElementById("map"),ctx=canvas.getContext("2d");
+  const scale=canvas.width/WORLD.w;
+  const statusEl=document.getElementById("status");
+  const speedSlider=document.getElementById("speed");
+  const speedVal=document.getElementById("speedVal");
+
+  let agents=new Map();
+  let intervalId=null;
+  let updateInterval=200; // ms
+
+  function inside(z,x,y){return x>=z.x&&x<=z.x+z.w&&y>=z.y&&y<=z.y+z.h;}
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(const z of WORLD.zones){
+      ctx.fillStyle=z.level==="crit"?"rgba(239,68,68,.2)":"rgba(245,158,11,.2)";
+      ctx.fillRect(z.x*scale,z.y*scale,z.w*scale,z.h*scale);
+    }
+    for(const a of agents.values()){
+      ctx.fillStyle=COLORS[a.status||"ok"];
+      ctx.beginPath();ctx.arc(a.x*scale,a.y*scale,6,0,Math.PI*2);ctx.fill();
+      ctx.fillText(a.id,a.x*scale+10,a.y*scale);
+    }
+  }
+
+  function loop(){ draw(); requestAnimationFrame(loop); }
+  loop();
+
+  function initAgents(){
+    const initial=[
+      {id:"T1",x:20,y:20,vx:0.5,vy:0.3},
+      {id:"T2",x:60,y:40,vx:-0.4,vy:0.2},
+      {id:"T3",x:30,y:70,vx:0.3,vy:-0.5}
+    ];
+    for(const t of initial){ agents.set(t.id,t); }
+  }
+  initAgents();
+
+  function updateAgents(){
+    for(const a of agents.values()){
+      a.x+=a.vx;
+      a.y+=a.vy;
+      if(a.x<0||a.x>WORLD.w) a.vx*=-1;
+      if(a.y<0||a.y>WORLD.h) a.vy*=-1;
+      a.status="ok";
+      if(inside(WORLD.zones[0],a.x,a.y)) a.status="crit";
+      else if(inside(WORLD.zones[1],a.x,a.y)) a.status="warn";
+    }
+    statusEl.textContent="Ultimo aggiornamento: "+new Date().toLocaleTimeString();
+  }
+
+  function startUpdating(){
+    if(intervalId) clearInterval(intervalId);
+    intervalId=setInterval(updateAgents,updateInterval);
+  }
+
+  // Slider → cambia velocità aggiornamento
+  speedSlider.addEventListener("input",()=>{
+    updateInterval=parseInt(speedSlider.value);
+    speedVal.textContent=updateInterval;
+    startUpdating();
+  });
+
+  // start iniziale
+  startUpdating();
+  </script>
+</body>
+</html>
